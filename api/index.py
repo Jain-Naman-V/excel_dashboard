@@ -76,9 +76,16 @@ def fetch_excel():
     global _df_cache, _df_last_fetched
     if _df_cache is not None and _df_last_fetched and (datetime.now() - _df_last_fetched < CACHE_DURATION):
         return _df_cache.copy()
-    sheet_url = os.environ.get('EXCEL_SHEET_URL')
+
+    # Prefer EXCEL_SHEET_URL, then EXCEL_URL, then the default EXCEL_URL constant
+    sheet_url = (
+        os.environ.get('EXCEL_SHEET_URL')
+        or os.environ.get('EXCEL_URL')
+        or EXCEL_URL
+    )
     if not sheet_url:
-        raise ValueError("EXCEL_SHEET_URL environment variable not set.")
+        raise ValueError("No Excel URL configured. Set EXCEL_SHEET_URL or EXCEL_URL.")
+
     export_url = _to_export_url(sheet_url)
     response = requests.get(export_url, timeout=30)
     response.raise_for_status()
@@ -271,6 +278,16 @@ def api_counts():
 # ---------------------------------------------------------------------------
 # Front-end & Error Handlers
 # ---------------------------------------------------------------------------
+
+@app.route('/api/health')
+def api_health():
+    try:
+        return jsonify({
+            "status": "ok",
+            "time": datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 @app.route("/")
 def index():
